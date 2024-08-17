@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}Welcome{% endblock %}
+
+{% block content %}
+
+    <h1>Welcome, {{ email }}!</h1>
+    <a href="{{ url_for('logout') }}">Logout</a>
+
+{% endblock %}
