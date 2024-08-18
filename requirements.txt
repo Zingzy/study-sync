@@ -10,3 +10,4 @@ bcrypt
 Flask-WTF
 flask-socketio
 eventlet
+flask-session
