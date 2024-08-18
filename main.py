@@ -280,5 +280,42 @@ def end_session(session_id):
         return jsonify({"success": "Session ended successfully!"})
     return redirect(url_for("home"))
 
+@app.route("/upload-resource", methods=["POST"])
+@login_required
+def upload_resource():
+    data = request.get_json()
+    session_id = data.get("session_id")
+    resource_link = data.get("link")
+    resource_name = data.get("name")
+    ext = data.get("ext")
+
+    if not session_id or not resource_link or not ext:
+        return jsonify({"error": "Invalid data"}), 400
+
+    resource_id = str(uuid.uuid4())
+
+    resource_data = {
+        "resource_id": resource_id,
+        "link": resource_link,
+        "uploader": session["email"],
+        "ext": ext,
+        "name": resource_name
+    }
+
+    sessions_collection.update_one(
+        {"session_id": session_id},
+        {"$push": {"resources": resource_data}}
+    )
+
+    return jsonify({"success": True, "resource": resource_data})
+
+@socketio.on("resource_uploaded")
+def on_resource_uploaded(data):
+    session_id = data["session_id"]
+    resource = data["resource"]
+
+    emit("update_resources", {"resource": resource}, to=session_id)
+
+
 if __name__ == "__main__":
     socketio.run(app, debug=True)

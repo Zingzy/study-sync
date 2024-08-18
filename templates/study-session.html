@@ -8,7 +8,15 @@
 <p>Session ID: {{ session_data.session_id }}</p>
 <p>Session Name: {{ session_data.session_name }}</p>
 <p>Session Type: {{ session_data.session_type }}</p>
-<p>Participants: <span id="participants-list">{{ session_data.participants|join(', ') }}</span></p>
+
+<h2>Participants</h2>
+<ol>
+    {% for participant in session_data.participants %}
+    <li>{{ participant }}</li>
+    {% endfor %}
+</ol>
+
+<h2>Live Chat</h2>
 
 <div id="chat-box">
     {% for message in session_data.chat_messages %}
@@ -21,18 +29,20 @@
     <button type="submit">Send</button>
 </form>
 
-<h2>Resources</h2>
-<ul id="resources-list">
-    {% for resource in session_data.resources %}
-    <li>
-        <a href="{{ resource.link }}" target="_blank">Resource {{ loop.index }} ({{ resource.ext }})</a> - Uploaded by
-        {{ resource.author_email }}
-    </li>
-    {% endfor %}
-</ul>
+<hr>
 
-<form id="upload-resource-form" enctype="multipart/form-data">
-    <input type="file" id="resource-file" name="file" />
+<h2>Resources</h2>
+
+<div id="resources-list">
+    <!-- Display resources here -->
+    {% for resource in session_data.resources %}
+    <p><a href="{{ resource.link }}" target="_blank">{{ resource.name }} {{ loop.index }} ({{ resource.ext }})</a> by {{
+        resource.uploader }}</p>
+    {% endfor %}
+</div>
+
+<form id="upload-form">
+    <input type="file" id="file-input" />
     <button type="submit">Upload Resource</button>
 </form>
 
@@ -86,14 +96,6 @@
         beep.play();
     });
 
-    socket.on("chat_cleared", function (data) {
-        if (data.session_id === "{{ session_data.session_id }}") {
-            var chatBox = document.getElementById("chat-box");
-            chatBox.innerHTML = "";
-            console.log("Chat cleared");
-        }
-    });
-
     socket.on("update_participants", function (data) {
         var participantsList = document.getElementById("participants-list");
         participantsList.innerText = data.participants.join(", ");
@@ -107,29 +109,82 @@
         messageInput.value = "";
     });
 
-    document.getElementById("leave-session-form").addEventListener("submit", function () {
-        socket.emit("leave", { "session_id": "{{ session_data.session_id }}" });
-    });
+    try {
+        document.getElementById("leave-session-form").addEventListener("submit", function (event) {
+            event.preventDefault();
+            socket.emit("leave", { "session_id": "{{ session_data.session_id }}" });
+        });
+    }
+    catch (e) {
+        console.log("User is the owner of the session");
+    }
 
-    document.getElementById("resource-upload-form").addEventListener("submit", function (event) {
-        event.preventDefault(); // Prevent the default form submission
+    document.getElementById("upload-form").addEventListener("submit", function (event) {
+        event.preventDefault();
 
-        var fileInput = document.getElementById("resource-file");
+        var fileInput = document.getElementById("file-input");
         var file = fileInput.files[0];
 
-        if (file) {
-            var reader = new FileReader();
-            reader.onload = function (event) {
-                var fileData = event.target.result.split(",")[1]; // Get the base64 data without the MIME type
-                console.log("File data to be sent:", fileData);
-                socket.emit("upload_resource", {
-                    "session_id": "{{ session_data.session_id }}",
-                    "file": fileData,
-                    "file_name": file.name
-                });
-            };
-            reader.readAsDataURL(file); // Read the file as a data URL (base64)
+        if (!file) {
+            alert("Please select a file to upload.");
+            return;
         }
+
+        // check if the file size is greter than 15MB
+        if (file.size > 15 * 1024 * 1024) {
+            alert("File size should be less than 15MB.");
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append("file", file);
+
+        // Upload to i.spoo.me
+        fetch("https://i.spoo.me/upload", {
+            method: "POST",
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.url) {
+                    // Send the URL to your Flask backend
+                    fetch("{{ url_for('upload_resource') }}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            session_id: "{{ session_data.session_id }}",
+                            link: data.url,
+                            name: file.name.split('.').slice(0, -1).join('.'),
+                            ext: file.name.split('.').pop()
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                socket.emit("resource_uploaded", {
+                                    session_id: "{{ session_data.session_id }}",
+                                    resource: data.resource
+                                });
+                                alert("Resource uploaded successfully!");
+                            } else {
+                                alert("Failed to upload resource.");
+                            }
+                        });
+                } else {
+                    alert("Failed to upload file.");
+                }
+            });
+    });
+
+    socket.on("update_resources", function (data) {
+        var resource = data.resource;
+        var resourcesList = document.getElementById("resources-list");
+
+        var resourceElement = document.createElement("p");
+        resourceElement.innerHTML = '<a href="' + resource.link + '" target="_blank">Resource (' + resource.ext + ')</a> by ' + resource.uploader;
+        resourcesList.appendChild(resourceElement);
     });
 
 
