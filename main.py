@@ -14,7 +14,7 @@ app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
 CORS(app)
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*", transports=['websocket', 'polling'])
 
 # MongoDB connection
 client = MongoClient(MONGODB_URI)
