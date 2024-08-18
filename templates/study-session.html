@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Session Detail{% endblock %}
+
+{% block content %}
+
+<h1>Session Detail</h1>
+<p>Session ID: {{ session_data.session_id }}</p>
+<p>Session Name: {{ session_data.session_name }}</p>
+<p>Session Type: {{ session_data.session_type }}</p>
+<p>Participants: <span id="participants-list">{{ session_data.participants|join(', ') }}</span></p>
+
+<div id="chat-box">
+    {% for message in session_data.chat_messages %}
+    <p><strong>{{ message.email }}:</strong> {{ message.message }}</p>
+    {% endfor %}
+</div>
+
+<form id="chat-form">
+    <input type="text" id="message-input" autocomplete="off" placeholder="Type your message here..." />
+    <button type="submit">Send</button>
+</form>
+
+<!-- If the user is not the owner of the session, add a leave session button else an end session button -->
+{% if session_data.session_owner != email %}
+<form id="leave-session-form" method="post" action="{{ url_for('leave_session', session_id=session_data.session_id) }}">
+    <button type="submit">Leave Session</button>
+</form>
+{% else %}
+<form id="end-session-form" method="post" action="{{ url_for('end_session', session_id=session_data.session_id) }}">
+    <button type="submit">End Session</button>
+</form>
+{% endif %}
+
+<a href="{{ url_for('home') }}">Back to Home</a>
+
+{% endblock %}
+
+{% block custom_js_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script type="text/javascript">
+    var socket = io.connect(window.location.origin);
+
+    socket.emit("join", { "session_id": "{{ session_data.session_id }}" });
+
+    socket.on("connect", function () {
+        console.log("Connected to WebSocket server");
+    });
+
+    socket.on("end_session", function (data) {
+        if (data.session_id === "{{ session_data.session_id }}") {
+            alert("The session has ended.");
+            window.location.href = "{{ url_for('home') }}";
+        }
+    });
+
+    socket.on("receive_message", function (data) {
+        var chatBox = document.getElementById("chat-box");
+        var messageElement = document.createElement("p");
+        messageElement.innerHTML = "<strong>" + data.email + ":</strong> " + data.message;
+        chatBox.appendChild(messageElement);
+
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        // do not play the beep sound if the message is from the current user
+        if (data.email === "{{ email }}") {
+            return;
+        }
+        var beep = new Audio("{{ url_for('static', filename='beep.mp3') }}");
+        beep.play();
+    });
+
+    socket.on("chat_cleared", function (data) {
+        if (data.session_id === "{{ session_data.session_id }}") {
+            var chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML = "";
+            console.log("Chat cleared");
+        }
+    });
+
+    socket.on("update_participants", function (data) {
+        var participantsList = document.getElementById("participants-list");
+        participantsList.innerText = data.participants.join(", ");
+    });
+
+    document.getElementById("chat-form").addEventListener("submit", function (event) {
+        event.preventDefault();
+        var messageInput = document.getElementById("message-input");
+        var message = messageInput.value;
+        socket.emit("send_message", { "session_id": "{{ session_data.session_id }}", "message": message });
+        messageInput.value = "";
+    });
+
+    document.getElementById("leave-session-form").addEventListener("submit", function () {
+        socket.emit("leave", { "session_id": "{{ session_data.session_id }}" });
+    });
+
+</script>
+{% endblock %}

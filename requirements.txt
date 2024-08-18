@@ -7,3 +7,5 @@ gunicorn==22.0.0
 flask-caching
 Flask-Limiter
 bcrypt
+Flask-WTF
+flask-socketio
