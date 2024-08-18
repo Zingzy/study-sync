@@ -1,0 +1,26 @@
+* {
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: #1a1a1a;
+    color: #fff;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 100dvw;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+input:focus {
+    outline: none;
+}
+
+hr {
+    margin: 30px;
+    background-color: grey;
+    opacity: 0.2;
+}

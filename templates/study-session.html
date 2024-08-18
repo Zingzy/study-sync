@@ -21,6 +21,24 @@
     <button type="submit">Send</button>
 </form>
 
+<h2>Resources</h2>
+<ul id="resources-list">
+    {% for resource in session_data.resources %}
+    <li>
+        <a href="{{ resource.link }}" target="_blank">Resource {{ loop.index }} ({{ resource.ext }})</a> - Uploaded by
+        {{ resource.author_email }}
+    </li>
+    {% endfor %}
+</ul>
+
+<form id="upload-resource-form" enctype="multipart/form-data">
+    <input type="file" id="resource-file" name="file" />
+    <button type="submit">Upload Resource</button>
+</form>
+
+
+<br><br>
+
 <!-- If the user is not the owner of the session, add a leave session button else an end session button -->
 {% if session_data.session_owner != email %}
 <form id="leave-session-form" method="post" action="{{ url_for('leave_session', session_id=session_data.session_id) }}">
@@ -31,8 +49,6 @@
     <button type="submit">End Session</button>
 </form>
 {% endif %}
-
-<a href="{{ url_for('home') }}">Back to Home</a>
 
 {% endblock %}
 
@@ -94,6 +110,28 @@
     document.getElementById("leave-session-form").addEventListener("submit", function () {
         socket.emit("leave", { "session_id": "{{ session_data.session_id }}" });
     });
+
+    document.getElementById("resource-upload-form").addEventListener("submit", function (event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        var fileInput = document.getElementById("resource-file");
+        var file = fileInput.files[0];
+
+        if (file) {
+            var reader = new FileReader();
+            reader.onload = function (event) {
+                var fileData = event.target.result.split(",")[1]; // Get the base64 data without the MIME type
+                console.log("File data to be sent:", fileData);
+                socket.emit("upload_resource", {
+                    "session_id": "{{ session_data.session_id }}",
+                    "file": fileData,
+                    "file_name": file.name
+                });
+            };
+            reader.readAsDataURL(file); // Read the file as a data URL (base64)
+        }
+    });
+
 
 </script>
 {% endblock %}

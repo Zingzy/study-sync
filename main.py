@@ -8,6 +8,8 @@ from flask_cors import CORS
 from functools import wraps
 import random
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_session import Session
+import requests
 
 
 app = Flask(__name__)
@@ -15,6 +17,9 @@ app.secret_key = SECRET_KEY
 
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", transports=['websocket', 'polling'])
+
+app.config['SESSION_TYPE'] = 'filesystem'
+Session(app)
 
 # MongoDB connection
 client = MongoClient(MONGODB_URI)
@@ -33,12 +38,10 @@ def login_required(f):
 
 # Home route
 @app.route("/")
+@login_required
 def home():
-    if "email" in session:
-        sessions = list(sessions_collection.find({"session_owner": session["email"]}, {"_id": 0}))
-        return render_template("welcome.html", email=session["email"], sessions=sessions)
-    return render_template("index.html")
-
+    sessions = list(sessions_collection.find({"session_owner": session["email"]}, {"_id": 0}))
+    return render_template("dashboard.html", email=session["email"], sessions=sessions)
 
 # Signup route
 @app.route("/signup", methods=["GET", "POST"])
@@ -239,11 +242,19 @@ def leave_session(session_id):
     session_data = sessions_collection.find_one({"session_id": session_id})
 
     if not session_data:
-        return jsonify({"error": "Session not found!"}), 404
+        return jsonify({"error": "Session not found!"}), 200
 
     # if the user is the owner of the session, throw an error
     if session["email"] == session_data["session_owner"]:
         return jsonify({"error": "You are the owner of this session!"}), 403
+
+    sessions_collection.update_one(
+        {"session_id": session_id},
+        {"$pull": {"participants": session["email"]}}
+    )
+
+    if request.form.get("json", False):
+        return jsonify({"success": "Left session successfully!"})
 
     return redirect(url_for("home"))
 
@@ -265,9 +276,9 @@ def end_session(session_id):
     # Remove session from the database
     sessions_collection.delete_one({"session_id": session_id})
 
-    flash("Session ended successfully!")
+    if request.form.get("json", False):
+        return jsonify({"success": "Session ended successfully!"})
     return redirect(url_for("home"))
 
-
 if __name__ == "__main__":
-    socketio.run(app)
+    socketio.run(app, debug=True)

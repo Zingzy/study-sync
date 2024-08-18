@@ -1,11 +1,14 @@
 <!DOCTYPE html>
-<lang="en">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
 
     <title>{% block title %}{% endblock %}</title>
 
@@ -17,6 +20,33 @@
 </head>
 
 <body>
+
+    <div class="navbar">
+        <img class="navbar-image" src="{{ url_for('static', filename='images/logo.png') }}" alt="StudySync"
+            loading="lazy">
+        <div class="links">
+            <ul>
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/logout">Logout</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="mobile-navbar" style="z-index: 100;">
+        <div class="mobile-logo">
+            <a href="/"><img class="mobile-logo-image" src="{{ url_for('static', filename='images/logo.png') }}"
+                    alt="StudySync" loading="lazy"></a>
+        </div>
+        <button type="button" class="burger" title="Menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <ul class="mobile-menu">
+            <li><a href="/" class="active">Home</a></li>
+            <li><a href="/logout">Logout</a></li>
+        </ul>
+    </div>
 
     {% with messages = get_flashed_messages() %}
     {% if messages %}
@@ -31,7 +61,23 @@
     {% block content %}
     {% endblock %}
 
-    {% block custom_js_scripts %}{% endblock %}
+    {% block custom_js_scripts %}
+    {% endblock %}
+
+    <script>
+        window.addEventListener('scroll', function () {
+            var navbar = document.querySelector('.navbar');
+            var mobileNavbar = document.querySelector('.mobile-navbar');
+            if (window.pageYOffset > 75) {
+                navbar.classList.add('scrolled');
+                mobileNavbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+                mobileNavbar.classList.remove('scrolled');
+            }
+        });
+    </script>
 
 </body>
+
 </html>

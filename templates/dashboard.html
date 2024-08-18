@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block custom_css_scripts %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+
+    <div class="form-upper">
+        <!-- Form to create a new session -->
+        <div class="forms-inner">
+            <div class="form-section">
+                <h2>Create a New Session</h2>
+                <form id="create-session-form" method="post" action="{{ url_for('create_session') }}"
+                    class="session-form">
+                    <label for="session-name">Session Name:</label>
+                    <input type="text" id="session-name" name="session-name" required>
+                    <label for="session-type">Session Type:</label>
+                    <select id="session-type" name="session-type">
+                        <option value="public">Public</option>
+                        <option value="private">Private</option>
+                    </select>
+                    <button type="submit" class="create-button">Create Session</button>
+                </form>
+            </div>
+
+            <hr>
+
+            <div class="form-section">
+                <h2>Join a Session</h2>
+                <form id="join-session-form" method="get" action="#" class="session-form">
+                    <label for="session-id">Session ID:</label>
+                    <input type="text" id="session-id" name="session-id" required>
+                    <label for="password">Password (if private):</label>
+                    <input type="password" id="password" name="password">
+                    <button type="button" onclick="joinSession()" class="join-button">Join Session</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="sessions-section">
+            <!-- Section to display sessions created by the user -->
+            <div class="sessions-section">
+                <h2>Your Sessions</h2>
+                <div id="user-sessions" class="session-list"></div>
+            </div>
+
+            <div class="sessions-section">
+                <h2>Joined Sessions</h2>
+                <div id="joined-sessions" class="session-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block custom_js_scripts %}
+<script>
+    // Function to create a session
+    document.getElementById('create-session-form').addEventListener('submit', function (event) {
+        event.preventDefault();
+        const formData = new FormData(this);
+        fetch('{{ url_for("create_session") }}', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    alert('Session created successfully!');
+                    loadUserSessions(); // Reload the list of user sessions
+                }
+            });
+    });
+
+    // Function to load user sessions
+    function loadUserSessions() {
+        fetch('{{ url_for("get_sessions") }}', {
+            method: 'POST'
+        })
+            .then(response => response.json())
+            .then(data => {
+                const sessionsDiv = document.getElementById('user-sessions');
+                sessionsDiv.innerHTML = ''; // Clear existing content
+                data.forEach(session => {
+                    const sessionElement = document.createElement('div');
+                    sessionElement.classList.add('session-div');
+                    sessionElement.innerHTML = `
+                <p><b>Session ID</b>: ${session.session_id}</p>
+                <p><b>Session Name</b>: ${session.session_name}</p>
+                <p><b>Session Type</b>: ${session.session_type}</p>
+                ${session.session_type === 'private' ? `
+                    <p class='password-frame'>
+                        <b>Password</b>:
+                        <input type="password" id="session-password-${session.session_id}" value="${session.session_password}" readonly>
+                        <button type="button" class="password-reveal" onclick="togglePasswordVisibility('session-password-{{ session.session_id }}')">
+                            <img src="{{ url_for('static', filename='images/show.png') }}" alt="Show Password">
+                        </button>
+                    </p>
+                ` : ''}
+                <button type="button" onclick="joinSessionWithPassword('${session.session_id}', '${session.session_type}', '${session.session_password}')">Join</button>
+                <button type="button" onclick="copySessionLink('${session.session_id}', '${session.session_type}', '${session.session_password}')">Copy Link</button>
+                <button class="danger-button" onclick="endSession('${session.session_id}')">End</button>
+            `;
+                    sessionsDiv.appendChild(sessionElement);
+                });
+            });
+    }
+
+    function loadJoinedSessions() {
+        fetch('{{ url_for("get_joined_sessions") }}', {
+            method: 'POST'
+        })
+            .then(response => response.json())
+            .then(data => {
+                const sessionsDiv = document.getElementById('joined-sessions');
+                sessionsDiv.innerHTML = ''; // Clear existing content
+                data.forEach(session => {
+                    const sessionElement = document.createElement('div');
+                    sessionElement.classList.add('session-div');
+                    sessionElement.innerHTML = `
+                <p><b>Session ID</b>: ${session.session_id}</p>
+                <p><b>Session Name</b>: ${session.session_name}</p>
+                <p><b>Session Type</b>: ${session.session_type}</p>
+                ${session.session_type === 'private' ? `
+                    <p class='password-frame'>
+                        <b>Password</b>:
+                        <input type="password" id="session-password-${session.session_id}" value="${session.session_password}" readonly>
+                        <button type="button" class="password-reveal" onclick="togglePasswordVisibility('session-password-{{ session.session_id }}')">
+                            <img src="{{ url_for('static', filename='images/show.png') }}" alt="Show Password">
+                        </button>
+                    </p>
+                ` : ''}
+                <button type="button" onclick="joinSessionWithPassword('${session.session_id}', '${session.session_type}', '${session.session_password}')">Go Back</button>
+                <button type="button" class="danger-button" onclick="leaveSession('${session.session_id}')">Leave</button>
+            `;
+                    sessionsDiv.appendChild(sessionElement);
+                });
+            });
+    }
+
+    // Function to toggle password visibility
+    function togglePasswordVisibility(inputId) {
+        const passwordInput = document.getElementById(inputId);
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+        } else {
+            passwordInput.type = 'password';
+        }
+    }
+
+    // Function to join a session with password
+    function joinSessionWithPassword(sessionId, sessionType, sessionPassword) {
+        let url = `{{ url_for('join_session', session_id='') }}${sessionId}`;
+        if (sessionType === 'private') {
+            url += `?password=${sessionPassword}`;
+        }
+        window.location.href = url;
+    }
+
+    // Function to copy session link to clipboard
+    function copySessionLink(sessionId, sessionType, sessionPassword) {
+        let url = `{{ url_for('join_session', session_id='') }}${sessionId}`;
+        if (sessionType === 'private') {
+            url += `?password=${sessionPassword}`;
+        }
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Session link copied to clipboard!');
+        }, () => {
+            alert('Failed to copy session link to clipboard.');
+        });
+    }
+
+    // Function to join a session
+    function joinSession() {
+        const sessionId = document.getElementById('session-id').value;
+        const password = document.getElementById('password').value;
+        const url = `{{ url_for('join_session', session_id='') }}${sessionId}?password=${password}`;
+        window.location.href = url;
+    }
+
+    // Function to end a session
+    function endSession(sessionId) {
+        const formData = new FormData();
+        formData.append('json', 'True');
+
+        fetch(`{{ url_for('end_session', session_id='') }}${sessionId}`, {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    alert('Session ended successfully!');
+                    loadUserSessions(); // Reload the list of user sessions
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                alert('An error occurred while ending the session.');
+            });
+    }
+
+    function leaveSession(sessionId) {
+        const formData = new FormData();
+        formData.append('json', 'True');
+
+        fetch(`{{ url_for('leave_session', session_id='') }}${sessionId}`, {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    alert('Session left successfully!');
+                    loadJoinedSessions(); // Reload the list of joined sessions
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                alert('An error occurred while leaving the session.');
+            });
+    }
+
+    // Load user sessions on page load
+    document.addEventListener('DOMContentLoaded', loadUserSessions);
+    document.addEventListener('DOMContentLoaded', loadJoinedSessions);
+</script>
+{% endblock %}
