@@ -137,7 +137,7 @@
                         </button>
                     </p>
                 ` : ''}
-                <button type="button" onclick="joinSessionWithPassword('${session.session_id}', '${session.session_type}', '${session.session_password}')">Go Back</button>
+                <button type="button" onclick="joinSessionWithPassword('${session.session_id}', '${session.session_type}', '${session.session_password}')">Join Back</button>
                 <button type="button" class="danger-button" onclick="leaveSession('${session.session_id}')">Leave</button>
             `;
                     sessionsDiv.appendChild(sessionElement);
@@ -166,7 +166,7 @@
 
     // Function to copy session link to clipboard
     function copySessionLink(sessionId, sessionType, sessionPassword) {
-        let url = `{{ url_for('join_session', session_id='') }}${sessionId}`;
+        let url = `${window.location.origin}{{ url_for('join_session', session_id='') }}${sessionId}`;
         if (sessionType === 'private') {
             url += `?password=${sessionPassword}`;
         }
