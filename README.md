@@ -4,9 +4,11 @@
 
 StudySync is a web application designed to facilitate collaborative study sessions. Users can upload resources, chat with each other, and share their progress in real-time. The application ensures a seamless and interactive learning experience.
 
+https://github.com/user-attachments/assets/9f06d3f3-6ac9-419f-9f0d-b0fd912f598a
+
 ## Features ✨
 
-- **Resource Upload**: Upload various types of resources including images, documents, and more.
+- **Resource Upload**: Upload various types of resources including images, documents, and more using the i.spoo.me API
 - **Real-time Chat**: Communicate with other participants in real-time.
 - **Session Management**: Create, join, and leave study sessions easily.
 - **Interactive Dashboard**: Easily view and manage all of your study sessions.
