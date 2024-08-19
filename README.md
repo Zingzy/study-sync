@@ -1,8 +1,8 @@
-# Study Session 📚
+# StudySync 📚
 
 ## Overview
 
-Study Session is a web application designed to facilitate collaborative study sessions. Users can upload resources, chat with each other, and share their progress in real-time. The application ensures a seamless and interactive learning experience.
+StudySync is a web application designed to facilitate collaborative study sessions. Users can upload resources, chat with each other, and share their progress in real-time. The application ensures a seamless and interactive learning experience.
 
 ## Features ✨
 
@@ -23,8 +23,8 @@ Study Session is a web application designed to facilitate collaborative study se
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/study-session.git
-    cd study-session
+    git clone https://github.com/zingzy/study-sync.git
+    cd study-sync
     ```
 
 2. Install backend dependencies:
