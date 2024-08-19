@@ -316,6 +316,30 @@ def on_resource_uploaded(data):
 
     emit("update_resources", {"resource": resource}, to=session_id)
 
+@socketio.on("load_video")
+def on_load_video(data):
+    session_id = data["session_id"]
+    video_id = data["videoId"]
+    current_time = data["currentTime"]
+    is_playing = data["isPlaying"]
+
+    emit("load_video", {
+        "videoId": video_id,
+        "currentTime": current_time,
+        "isPlaying": is_playing
+    }, to=session_id)
+
+@socketio.on("video_control")
+def on_video_control(data):
+    session_id = data["session_id"]
+    action = data["action"]
+    current_time = data.get("currentTime", 0)
+
+    emit("video_control", {
+        "action": action,
+        "currentTime": current_time
+    }, to=session_id)
+
 
 if __name__ == "__main__":
     socketio.run(app, debug=True)

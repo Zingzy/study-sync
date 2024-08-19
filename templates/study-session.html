@@ -1,64 +1,97 @@
 {% extends 'base.html' %}
 
-{% block title %}Session Detail{% endblock %}
+{% block title %}{{ session_data.session_name }}{% endblock %}
+
+{% block custom_css_scripts %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/session.css') }}">
+{% endblock %}
 
 {% block content %}
 
-<h1>Session Detail</h1>
-<p>Session ID: {{ session_data.session_id }}</p>
-<p>Session Name: {{ session_data.session_name }}</p>
-<p>Session Type: {{ session_data.session_type }}</p>
+<div class="session-container">
+    <div class="session-header">
+        <div class="session-info">
+            <h2>{{ session_data.session_name }}</h2>
+            <span>•</span>
+            <p><strong>Session ID:</strong> {{ session_data.session_id }}</p>
+            <span>•</span>
+            <p><strong>Session Type:</strong> {{ session_data.session_type }}</p>
+        </div>
 
-<h2>Participants</h2>
-<ol>
-    {% for participant in session_data.participants %}
-    <li>{{ participant }}</li>
-    {% endfor %}
-</ol>
+        <div class="session-footer">
+            {% if session_data.session_owner != email %}
+            <form id="leave-session-form" method="post"
+                action="{{ url_for('leave_session', session_id=session_data.session_id) }}">
+                <button type="submit" class="leave-button">Leave Session</button>
+            </form>
+            {% else %}
+            <form id="end-session-form" method="post"
+                action="{{ url_for('end_session', session_id=session_data.session_id) }}">
+                <button type="submit" class="end-button">End Session</button>
+            </form>
+            {% endif %}
+        </div>
 
-<h2>Live Chat</h2>
+    </div>
 
-<div id="chat-box">
-    {% for message in session_data.chat_messages %}
-    <p><strong>{{ message.email }}:</strong> {{ message.message }}</p>
-    {% endfor %}
+    <div class="session-main">
+        <div class="session-sidebar">
+            <div class="participants-section">
+                <h3>Participants</h3>
+                <ol id="participants-list">
+                    {% for participant in session_data.participants %}
+                    <li>{{ participant }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+
+            <div class="resources-section">
+                <h3>Resources</h3>
+                <div id="resources-list">
+                    {% if session_data.resources %}
+                    {% for resource in session_data.resources %}
+                    <div class="resource">
+                        {% if resource.ext in ["png", "jpg", "jpeg", "svg", "gif", "webp", "bmp", "ico"] %}
+                        <img src="{{ resource.link }}" alt="{{ resource.name }}" class="resource-thumbnail" />
+                        {% else %}
+                        <span class="fake-thumbnail" style="text-transform: uppercase;">{{ resource.ext }}</span>
+                        {% endif %}
+                        <a href="{{ resource.link }}" target="_blank">{{ resource.name }} ({{ resource.ext }})</a>
+                        <span class="uploader">{{ resource.uploader }}</span>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="no-resources">
+                        <img src="{{ url_for('static', filename='images/no-resources.png') }}"
+                            alt="No resources available" class="no-resources-image" />
+                        <p>No resources available.</p>
+                        <p>Try Upload something!</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <form id="upload-form" class="upload-form">
+                    <input type="file" id="file-input" />
+                    <button type="submit" class="upload-button">Upload</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="chat-section">
+            <h3>Live Chat</h3>
+            <div id="chat-box" class="chat-box">
+                {% for message in session_data.chat_messages %}
+                <p><strong>{{ message.email }}:</strong> {{ message.message }}</p>
+                {% else %}
+                <p class="system-fake-message"><b>System</b>: This is the beginning of an amazing chat!</p>
+                {% endfor %}
+            </div>
+            <form id="chat-form" class="chat-form">
+                <input type="text" id="message-input" autocomplete="off" placeholder="Type your message here..." />
+                <button type="submit" class="send-button">Send</button>
+            </form>
+        </div>
+    </div>
 </div>
-
-<form id="chat-form">
-    <input type="text" id="message-input" autocomplete="off" placeholder="Type your message here..." />
-    <button type="submit">Send</button>
-</form>
-
-<hr>
-
-<h2>Resources</h2>
-
-<div id="resources-list">
-    <!-- Display resources here -->
-    {% for resource in session_data.resources %}
-    <p><a href="{{ resource.link }}" target="_blank">{{ resource.name }} {{ loop.index }} ({{ resource.ext }})</a> by {{
-        resource.uploader }}</p>
-    {% endfor %}
-</div>
-
-<form id="upload-form">
-    <input type="file" id="file-input" />
-    <button type="submit">Upload Resource</button>
-</form>
-
-
-<br><br>
-
-<!-- If the user is not the owner of the session, add a leave session button else an end session button -->
-{% if session_data.session_owner != email %}
-<form id="leave-session-form" method="post" action="{{ url_for('leave_session', session_id=session_data.session_id) }}">
-    <button type="submit">Leave Session</button>
-</form>
-{% else %}
-<form id="end-session-form" method="post" action="{{ url_for('end_session', session_id=session_data.session_id) }}">
-    <button type="submit">End Session</button>
-</form>
-{% endif %}
 
 {% endblock %}
 
@@ -82,6 +115,12 @@
 
     socket.on("receive_message", function (data) {
         var chatBox = document.getElementById("chat-box");
+
+        var fakeMessage = document.querySelector(".system-fake-message");
+        if (fakeMessage) {
+            fakeMessage.remove();
+        }
+
         var messageElement = document.createElement("p");
         messageElement.innerHTML = "<strong>" + data.email + ":</strong> " + data.message;
         chatBox.appendChild(messageElement);
@@ -98,7 +137,12 @@
 
     socket.on("update_participants", function (data) {
         var participantsList = document.getElementById("participants-list");
-        participantsList.innerText = data.participants.join(", ");
+        participantsList.innerHTML = "";
+        data.participants.forEach(function (participant) {
+            var participantElement = document.createElement("li");
+            participantElement.textContent = participant;
+            participantsList.appendChild(participantElement);
+        });
     });
 
     document.getElementById("chat-form").addEventListener("submit", function (event) {
@@ -113,6 +157,7 @@
         document.getElementById("leave-session-form").addEventListener("submit", function (event) {
             event.preventDefault();
             socket.emit("leave", { "session_id": "{{ session_data.session_id }}" });
+            window.location.href = "{{ url_for('home') }}";
         });
     }
     catch (e) {
@@ -156,7 +201,7 @@
                         body: JSON.stringify({
                             session_id: "{{ session_data.session_id }}",
                             link: data.url,
-                            name: file.name.split('.').slice(0, -1).join('.'),
+                            name: file.name.split('.').slice(0, -1).join('.').slice(0, 25),
                             ext: file.name.split('.').pop()
                         })
                     })
@@ -182,11 +227,37 @@
         var resource = data.resource;
         var resourcesList = document.getElementById("resources-list");
 
-        var resourceElement = document.createElement("p");
-        resourceElement.innerHTML = '<a href="' + resource.link + '" target="_blank">Resource (' + resource.ext + ')</a> by ' + resource.uploader;
+        var noResourcesDiv = document.querySelector(".no-resources");
+        if (noResourcesDiv) {
+            noResourcesDiv.remove();
+        }
+
+        var resourceElement = document.createElement("div");
+        resourceElement.className = "resource";
+        if (["png", "jpg", "jpeg", "svg", "gif", "webp", "bmp", "ico"].includes(resource.ext.toLowerCase())) {
+            resourceElement.innerHTML = `
+                <img src="${resource.link}" alt="${resource.name}" class="resource-thumbnail" />
+                <a href="${resource.link}" target="_blank">${resource.name} (${resource.ext.toUpperCase()})</a>
+                <span class="uploader">by ${resource.uploader}</span>
+            `;
+        } else {
+            resourceElement.innerHTML = `
+                <span class="fake-thumbnail" style="text-transform: uppercase;">${resource.ext}</span>
+                <a href="${resource.link}" target="_blank">${resource.name} (${resource.ext.toUpperCase()})</a>
+                <span class="uploader">by ${resource.uploader}</span>
+            `;
+        }
         resourcesList.appendChild(resourceElement);
+        resourcesList.scrollTop = resourcesList.scrollHeight;
     });
 
+    window.onload = function () {
+        var chatBox = document.getElementById("chat-box");
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        var resourcesList = document.getElementById("resources-list");
+        resourcesList.scrollTop = resourcesList.scrollHeight;
+    };
 
 </script>
 {% endblock %}

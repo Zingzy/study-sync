@@ -99,7 +99,7 @@
                     <p class='password-frame'>
                         <b>Password</b>:
                         <input type="password" id="session-password-${session.session_id}" value="${session.session_password}" readonly>
-                        <button type="button" class="password-reveal" onclick="togglePasswordVisibility('session-password-{{ session.session_id }}')">
+                        <button type="button" class="password-reveal" onclick="togglePasswordVisibility('session-password-${session.session_id}')">
                             <img src="{{ url_for('static', filename='images/show.png') }}" alt="Show Password">
                         </button>
                     </p>
@@ -148,8 +148,12 @@
     // Function to toggle password visibility
     function togglePasswordVisibility(inputId) {
         const passwordInput = document.getElementById(inputId);
+        const passwordRevealButton = passwordInput.nextElementSibling;
+
+
         if (passwordInput.type === 'password') {
             passwordInput.type = 'text';
+
         } else {
             passwordInput.type = 'password';
         }
